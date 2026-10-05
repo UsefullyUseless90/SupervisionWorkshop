@@ -19,10 +19,10 @@ function AppContent() {
   const [historyRef, setHistoryRef] = useState<string | null>(null);
   const [trackQuery, setTrackQuery] = useState<string>('');
 
-  // Auto-navigate to scan page after login
+  // Production agents land on scan page; others on dashboard
   useEffect(() => {
-    if (session && profile) {
-      // stay on dashboard by default
+    if (session && profile && profile.role === 'production') {
+      setPage('scan');
     }
   }, [session, profile]);
 

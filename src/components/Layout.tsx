@@ -39,7 +39,7 @@ const ALL_ROLES: UserRole[] = ['production', 'quality', 'dpx', 'activity_manager
 const MANAGER_ROLES: UserRole[] = ['dpx', 'activity_manager', 'admin'];
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ALL_ROLES },
+  { key: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['quality', 'dpx', 'activity_manager', 'admin'] },
   { key: 'scan', label: 'Scanner un OF', icon: ScanLine, roles: ALL_ROLES },
   { key: 'quality', label: 'Contrôle qualité', icon: ShieldCheck, roles: ['quality', 'dpx', 'activity_manager', 'admin'] },
   { key: 'track', label: 'Rechercher un OF', icon: Search, roles: ALL_ROLES },
