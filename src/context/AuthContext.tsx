@@ -75,13 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function signIn(matricule: string, password: string) {
-    const email = `${matricule.trim()}@workshop.local`;
+  async function signIn(identifier: string, password: string) {
+    const value = identifier.trim();
+    const email = value.includes('@') ? value : `${value}@workshop.local`;
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    if (error) return { error: 'Matricule ou mot de passe incorrect' };
+    if (error) return { error: 'Utilisateur ou mot de passe incorrect' };
     return { error: null };
   }
 
