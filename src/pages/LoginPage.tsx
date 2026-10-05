@@ -34,10 +34,10 @@ export function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Matricule
+                Utilisateur
               </label>
               <input
                 type="text"
