@@ -56,6 +56,8 @@ export interface Movement {
   comment: string | null;
   status: 'valid' | 'anomaly';
   anomaly_type: AnomalyType | null;
+  scan_type: 'start' | 'end';
+  duration_elapsed_minutes: number | null;
   created_at: string;
 }
 

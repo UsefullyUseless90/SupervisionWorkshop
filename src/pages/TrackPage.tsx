@@ -12,11 +12,22 @@ import {
   AlertCircle,
   History,
   XCircle,
+  Timer,
+  PlayCircle,
 } from 'lucide-react';
 
 interface TrackPageProps {
   onShowHistory: (ofReference: string) => void;
   initialQuery?: string;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 1) return "moins d'1 min";
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours} h`;
+  return `${hours} h ${mins} min`;
 }
 
 export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
@@ -27,6 +38,9 @@ export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
     currentLocation: string | null;
     lastMove: Movement | null;
     totalMoves: number;
+    hasActiveStart: boolean;
+    timeAtCurrentLocation: number | null;
+    totalTimeTracked: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -60,12 +74,26 @@ export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
 
     const moves = data as Movement[];
     const last = moves[0];
+    const hasActiveStart = last.scan_type === 'start';
+
+    let timeAtCurrent: number | null = null;
+    if (hasActiveStart) {
+      const startTime = new Date(last.created_at).getTime();
+      timeAtCurrent = Math.max(0, Math.round((Date.now() - startTime) / 60000));
+    }
+
+    const totalTimeTracked = moves
+      .filter((m) => m.scan_type === 'end' && m.duration_elapsed_minutes !== null)
+      .reduce((sum, m) => sum + (m.duration_elapsed_minutes || 0), 0);
 
     setResult({
       reference: ref,
       currentLocation: last.new_location_name,
       lastMove: last,
       totalMoves: moves.length,
+      hasActiveStart,
+      timeAtCurrentLocation: timeAtCurrent,
+      totalTimeTracked,
     });
     setLoading(false);
   }, []);
@@ -74,6 +102,8 @@ export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
     setQuery(value);
     doSearch(value);
   }
+
+  const showTime = profile?.role !== 'production';
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -131,6 +161,12 @@ export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
                 <p className="font-semibold text-slate-900">
                   {result.currentLocation || '—'}
                 </p>
+                {result.hasActiveStart && (
+                  <span className="inline-flex items-center gap-1 mt-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                    <PlayCircle size={12} />
+                    Présence en cours
+                  </span>
+                )}
               </div>
 
               <div className="p-5">
@@ -139,13 +175,36 @@ export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
                   Dernier déplacement
                 </div>
                 <p className="font-semibold text-slate-900">
-                  {result.lastMove && profile?.role !== 'production'
+                  {result.lastMove && showTime
                     ? new Date(result.lastMove.created_at).toLocaleString('fr-FR')
-                    : profile?.role === 'production' ? '—'
                     : '—'}
                 </p>
               </div>
             </div>
+
+            {showTime && result.hasActiveStart && result.timeAtCurrentLocation !== null && (
+              <div className="p-5 border-t border-slate-100 bg-blue-50/50">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                  <Timer size={16} />
+                  Temps écoulé sur l'emplacement actuel
+                </div>
+                <p className="font-semibold text-blue-900 text-lg">
+                  {formatDuration(result.timeAtCurrentLocation)}
+                </p>
+              </div>
+            )}
+
+            {showTime && result.totalTimeTracked > 0 && (
+              <div className="p-5 border-t border-slate-100">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                  <Timer size={16} />
+                  Temps total tracé (tous emplacements)
+                </div>
+                <p className="font-semibold text-slate-900 text-lg">
+                  {formatDuration(result.totalTimeTracked)}
+                </p>
+              </div>
+            )}
 
             <div className="p-5 border-t border-slate-100">
               <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">

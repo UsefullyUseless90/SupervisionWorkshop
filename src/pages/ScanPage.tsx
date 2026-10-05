@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase, type Movement, type Location, type ScanMethod } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
@@ -12,12 +12,35 @@ import {
   Package,
   Check,
   RotateCcw,
+  PlayCircle,
+  StopCircle,
+  Clock,
+  Timer,
 } from 'lucide-react';
 
 type Step = 'scan_of' | 'confirm_of' | 'scan_location' | 'confirm' | 'done';
 
+interface PendingScan {
+  scanType: 'start' | 'end';
+  ofReference: string;
+  location: Location;
+  previousLocation: string | null;
+  previousLocationId: string | null;
+  comment: string;
+  startScan: Movement | null;
+}
+
 interface ScanPageProps {
   initialQuery?: string;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 1) return "moins d'1 min";
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours} h`;
+  return `${hours} h ${mins} min`;
 }
 
 export function ScanPage({ initialQuery }: ScanPageProps) {
@@ -26,18 +49,22 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
   const [ofReference, setOfReference] = useState('');
   const [previousLocation, setPreviousLocation] = useState<string | null>(null);
   const [previousLocationId, setPreviousLocationId] = useState<string | null>(null);
+  const [activeStartScan, setActiveStartScan] = useState<Movement | null>(null);
   const [scannedLocation, setScannedLocation] = useState<Location | null>(null);
   const [comment, setComment] = useState('');
   const [scanMethod, setScanMethod] = useState<ScanMethod>('camera');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedMovement, setSavedMovement] = useState<Movement | null>(null);
+  const [savedScanType, setSavedScanType] = useState<'start' | 'end'>('start');
+  const [savedDuration, setSavedDuration] = useState<number | null>(null);
 
   const reset = useCallback(() => {
     setStep('scan_of');
     setOfReference('');
     setPreviousLocation(null);
     setPreviousLocationId(null);
+    setActiveStartScan(null);
     setScannedLocation(null);
     setComment('');
     setError(null);
@@ -49,7 +76,6 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
       if (step !== 'scan_of') return;
       setError(null);
 
-      // Get last known location
       const { data: lastMove } = await supabase
         .from('movements')
         .select('*')
@@ -58,12 +84,21 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
         .limit(1)
         .maybeSingle();
 
-      if (lastMove) {
-        setPreviousLocation(lastMove.new_location_name);
-        setPreviousLocationId(lastMove.new_location_id);
+      const lastMovement = lastMove as Movement | null;
+
+      if (lastMovement) {
+        setPreviousLocation(lastMovement.new_location_name);
+        setPreviousLocationId(lastMovement.new_location_id);
+
+        if (lastMovement.scan_type === 'start') {
+          setActiveStartScan(lastMovement);
+        } else {
+          setActiveStartScan(null);
+        }
       } else {
         setPreviousLocation(null);
         setPreviousLocationId(null);
+        setActiveStartScan(null);
       }
 
       setOfReference(value);
@@ -92,7 +127,7 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
 
       const loc = locData as Location;
 
-      if (previousLocationId && loc.id === previousLocationId) {
+      if (previousLocationId && loc.id === previousLocationId && !activeStartScan) {
         setError(
           `L'OF est déjà à l'emplacement "${loc.name}". Aucun déplacement nécessaire.`
         );
@@ -102,35 +137,62 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
       setScannedLocation(loc);
       setStep('confirm');
     },
-    [step, previousLocationId]
+    [step, previousLocationId, activeStartScan]
   );
+
+  const determinedScanType: 'start' | 'end' = activeStartScan ? 'end' : 'start';
 
   async function handleSave() {
     if (!profile || !scannedLocation) return;
+    if (!comment.trim()) {
+      setError("Le commentaire est obligatoire pour indiquer la localisation de la pièce et de l'OF.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
+      const isEndScan = determinedScanType === 'end';
+      let durationMinutes: number | null = null;
+
+      if (isEndScan && activeStartScan) {
+        const startTime = new Date(activeStartScan.created_at).getTime();
+        const endTime = Date.now();
+        durationMinutes = Math.max(0, Math.round((endTime - startTime) / 60000));
+      }
+
+      const insertData: Record<string, unknown> = {
+        of_reference: ofReference,
+        previous_location_id: isEndScan ? previousLocationId : previousLocationId,
+        previous_location_name: isEndScan ? previousLocation : previousLocation,
+        new_location_id: scannedLocation.id,
+        new_location_name: scannedLocation.name,
+        user_id: profile.id,
+        user_name: profile.full_name || profile.matricule || 'Utilisateur',
+        scan_method: scanMethod,
+        comment: comment.trim(),
+        status: 'valid',
+        scan_type: determinedScanType,
+        duration_elapsed_minutes: durationMinutes,
+      };
+
+      if (!isEndScan) {
+        insertData.previous_location_id = previousLocationId;
+        insertData.previous_location_name = previousLocation;
+      }
+
       const { data, error: insertError } = await supabase
         .from('movements')
-        .insert({
-          of_reference: ofReference,
-          previous_location_id: previousLocationId,
-          previous_location_name: previousLocation,
-          new_location_id: scannedLocation.id,
-          new_location_name: scannedLocation.name,
-          user_id: profile.id,
-          user_name: profile.full_name || profile.matricule || 'Utilisateur',
-          scan_method: scanMethod,
-          comment: comment || null,
-          status: 'valid',
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (insertError) throw insertError;
 
       setSavedMovement(data as Movement);
+      setSavedScanType(determinedScanType);
+      setSavedDuration(durationMinutes);
       setStep('done');
     } catch {
       setError("Erreur lors de l'enregistrement du mouvement. Réessayez.");
@@ -146,7 +208,7 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Scanner un OF</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Scannez le dossier, puis l'emplacement, puis validez
+          Scannez l'OF puis l'emplacement — début ou fin de présence
         </p>
       </div>
 
@@ -259,6 +321,29 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
             </div>
           )}
 
+          {activeStartScan ? (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border-2 border-amber-200">
+              <StopCircle size={28} className="text-amber-600 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-900">Scan de fin détecté</p>
+                <p className="text-sm text-amber-700">
+                  Cet OF a un scan de début à « {activeStartScan.new_location_name} ».
+                  Le prochain scan clôturera la présence et calculera le temps écoulé.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border-2 border-blue-200">
+              <PlayCircle size={28} className="text-blue-600 shrink-0" />
+              <div>
+                <p className="font-semibold text-blue-900">Scan de début</p>
+                <p className="text-sm text-blue-700">
+                  Aucun scan de début en cours. Ce scan enregistrera l'arrivée de l'OF à un nouvel emplacement.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button
               onClick={reset}
@@ -293,11 +378,11 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
           </div>
 
           <div className="flex flex-col items-center mb-6 mt-4">
-            <div className="w-20 h-20 rounded-2xl bg-green-600 flex items-center justify-center mb-4 shadow-lg shadow-green-600/20">
-              <MapPin size={40} className="text-white" />
+            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-4 shadow-lg ${determinedScanType === 'end' ? 'bg-amber-600 shadow-amber-600/20' : 'bg-green-600 shadow-green-600/20'}`}>
+              {determinedScanType === 'end' ? <StopCircle size={40} className="text-white" /> : <PlayCircle size={40} className="text-white" />}
             </div>
             <h2 className="text-lg font-semibold text-slate-900">
-              Scanner l'emplacement
+              {determinedScanType === 'end' ? "Scanner l'emplacement de fin" : "Scanner l'emplacement de début"}
             </h2>
             <p className="text-sm text-slate-500 text-center mt-1">
               Scannez le QR code ou code-barres de l'emplacement
@@ -316,7 +401,7 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
       {step === 'confirm' && scannedLocation && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-5">
           <h2 className="font-semibold text-lg text-slate-900">
-            Confirmer le déplacement
+            {determinedScanType === 'end' ? 'Confirmer la fin de présence' : 'Confirmer le début de présence'}
           </h2>
 
           <div className="space-y-3">
@@ -333,13 +418,25 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
                 </p>
               </div>
               <ArrowRight size={24} className="text-slate-400 shrink-0" />
-              <div className="flex-1 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <p className="text-xs text-blue-500 mb-0.5">Nouvel emplacement</p>
-                <p className="font-medium text-blue-900">
+              <div className={`flex-1 p-3 rounded-lg border ${determinedScanType === 'end' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
+                <p className={`text-xs mb-0.5 ${determinedScanType === 'end' ? 'text-amber-500' : 'text-blue-500'}`}>
+                  {determinedScanType === 'end' ? 'Emplacement de fin' : 'Nouvel emplacement'}
+                </p>
+                <p className={`font-medium ${determinedScanType === 'end' ? 'text-amber-900' : 'text-blue-900'}`}>
                   {scannedLocation.name}
                 </p>
               </div>
             </div>
+
+            {determinedScanType === 'end' && activeStartScan && profile.role !== 'production' && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 text-sm">
+                <Timer size={18} className="text-slate-400" />
+                <span className="text-slate-500">Temps écoulé (approximatif):</span>
+                <span className="font-semibold text-slate-900">
+                  {formatDuration(Math.max(0, Math.round((Date.now() - new Date(activeStartScan.created_at).getTime()) / 60000)))}
+                </span>
+              </div>
+            )}
 
             <div className="p-3 rounded-lg bg-slate-50">
               <p className="text-xs text-slate-500 mb-0.5">Utilisateur</p>
@@ -350,14 +447,14 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Commentaire (optionnel)
+                Commentaire <span className="text-red-500">*</span> <span className="text-slate-400 font-normal">(obligatoire — localisation de la pièce et de l'OF)</span>
               </label>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                rows={2}
+                rows={3}
                 className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                placeholder="Note optionnelle..."
+                placeholder="Indiquez la localisation de la pièce et de l'OF..."
               />
             </div>
           </div>
@@ -374,18 +471,23 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
             </button>
             <button
               onClick={handleSave}
-              disabled={saving}
-              className="flex-1 py-3.5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              disabled={saving || !comment.trim()}
+              className={`flex-1 py-3.5 text-white rounded-xl font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${determinedScanType === 'end' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}
             >
               {saving ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
                   Enregistrement...
                 </>
+              ) : determinedScanType === 'end' ? (
+                <>
+                  <StopCircle size={20} />
+                  Valider la fin
+                </>
               ) : (
                 <>
-                  <Check size={20} />
-                  Valider le mouvement
+                  <PlayCircle size={20} />
+                  Valider le début
                 </>
               )}
             </button>
@@ -396,15 +498,17 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
       {/* Step: done */}
       {step === 'done' && savedMovement && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center space-y-5">
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 size={48} className="text-green-600" />
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto ${savedScanType === 'end' ? 'bg-amber-100' : 'bg-green-100'}`}>
+            {savedScanType === 'end' ? <StopCircle size={48} className="text-amber-600" /> : <CheckCircle2 size={48} className="text-green-600" />}
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              Mouvement enregistré
+              {savedScanType === 'end' ? 'Fin de présence enregistrée' : 'Début de présence enregistré'}
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              Le déplacement a été tracé avec succès
+              {savedScanType === 'end'
+                ? 'Le temps écoulé a été calculé'
+                : "L'arrivée de l'OF a été tracée"}
             </p>
           </div>
 
@@ -420,17 +524,39 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Date/heure</span>
-              <span className="font-medium text-slate-900">
-                {new Date(savedMovement.created_at).toLocaleString('fr-FR')}
+              <span className="text-slate-500">Type de scan</span>
+              <span className={`font-medium ${savedScanType === 'end' ? 'text-amber-600' : 'text-green-600'}`}>
+                {savedScanType === 'end' ? 'Fin' : 'Début'}
               </span>
             </div>
+            {savedScanType === 'end' && savedDuration !== null && profile.role !== 'production' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Temps écoulé</span>
+                <span className="font-semibold text-slate-900">
+                  {formatDuration(savedDuration)}
+                </span>
+              </div>
+            )}
+            {profile.role !== 'production' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Date/heure</span>
+                <span className="font-medium text-slate-900">
+                  {new Date(savedMovement.created_at).toLocaleString('fr-FR')}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Utilisateur</span>
               <span className="font-medium text-slate-900">
                 {savedMovement.user_name}
               </span>
             </div>
+            {savedMovement.comment && (
+              <div className="pt-2 border-t border-slate-200 text-sm">
+                <span className="text-slate-500">Commentaire: </span>
+                <span className="text-slate-700 italic">"{savedMovement.comment}"</span>
+              </div>
+            )}
           </div>
 
           <button

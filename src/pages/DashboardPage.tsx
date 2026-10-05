@@ -244,6 +244,9 @@ export function DashboardPage({ onNavigate }: DashboardProps) {
                     </p>
                     <p className="text-xs text-slate-500">
                       {m.previous_location_name || '—'} → {m.new_location_name}
+                      {m.scan_type === 'end' && m.duration_elapsed_minutes !== null && profile?.role !== 'production' && (
+                        <span className="text-amber-600 font-medium ml-1">· {Math.floor(m.duration_elapsed_minutes / 60)}h{String(Math.round(m.duration_elapsed_minutes % 60)).padStart(2, '0')}</span>
+                      )}
                     </p>
                   </div>
                   <div className="text-right ml-2 shrink-0">
@@ -255,8 +258,11 @@ export function DashboardPage({ onNavigate }: DashboardProps) {
                         })}
                       </p>
                     )}
+                    <span className={`inline-block text-xs font-medium ${m.scan_type === 'end' ? 'text-amber-600' : 'text-blue-600'}`}>
+                      {m.scan_type === 'end' ? 'Fin' : 'Début'}
+                    </span>
                     {m.status === 'anomaly' && (
-                      <span className="inline-block text-xs text-amber-600 font-medium">
+                      <span className="inline-block text-xs text-amber-600 font-medium ml-1">
                         anomalie
                       </span>
                     )}

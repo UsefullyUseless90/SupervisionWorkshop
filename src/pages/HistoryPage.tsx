@@ -11,11 +11,23 @@ import {
   User,
   ScanLine,
   AlertCircle,
+  PlayCircle,
+  StopCircle,
+  Timer,
 } from 'lucide-react';
 
 interface HistoryPageProps {
   ofReference: string | null;
   onClearReference: () => void;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 1) return "moins d'1 min";
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours} h`;
+  return `${hours} h ${mins} min`;
 }
 
 export function HistoryPage({ ofReference, onClearReference }: HistoryPageProps) {
@@ -56,6 +68,8 @@ export function HistoryPage({ ofReference, onClearReference }: HistoryPageProps)
     onClearReference();
     search(value);
   }
+
+  const showTime = profile?.role !== 'production';
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -107,21 +121,24 @@ export function HistoryPage({ ofReference, onClearReference }: HistoryPageProps)
             {movements.map((m, i) => {
               const isFirst = i === 0;
               const isLast = i === movements.length - 1;
+              const isStart = m.scan_type === 'start';
               return (
                 <div key={m.id} className="relative pb-6 last:pb-0">
                   <div
                     className={`absolute -left-5 w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-slate-50 ${
                       m.status === 'anomaly'
                         ? 'bg-amber-500'
-                        : isLast
-                        ? 'bg-green-500'
-                        : 'bg-blue-500'
+                        : isStart
+                        ? 'bg-blue-500'
+                        : 'bg-amber-500'
                     }`}
                   >
                     {isFirst ? (
                       <Package size={12} className="text-white" />
+                    ) : isStart ? (
+                      <PlayCircle size={12} className="text-white" />
                     ) : (
-                      <ArrowRight size={12} className="text-white" />
+                      <StopCircle size={12} className="text-white" />
                     )}
                   </div>
 
@@ -137,15 +154,26 @@ export function HistoryPage({ ofReference, onClearReference }: HistoryPageProps)
                           {m.new_location_name}
                         </span>
                       </div>
-                      {m.status === 'anomaly' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium whitespace-nowrap">
-                          anomalie
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
+                            isStart
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {isStart ? 'Début' : 'Fin'}
                         </span>
-                      )}
+                        {m.status === 'anomaly' && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium whitespace-nowrap">
+                            anomalie
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      {profile?.role !== 'production' && (
+                      {showTime && (
                         <span className="flex items-center gap-1">
                           <Clock size={14} />
                           {new Date(m.created_at).toLocaleString('fr-FR')}
@@ -162,6 +190,16 @@ export function HistoryPage({ ofReference, onClearReference }: HistoryPageProps)
                         </span>
                       )}
                     </div>
+
+                    {showTime && m.scan_type === 'end' && m.duration_elapsed_minutes !== null && (
+                      <div className="mt-2 flex items-center gap-2 text-sm bg-amber-50 rounded-lg px-3 py-2">
+                        <Timer size={16} className="text-amber-600" />
+                        <span className="text-amber-700">Temps passé sur l'emplacement:</span>
+                        <span className="font-semibold text-amber-900">
+                          {formatDuration(m.duration_elapsed_minutes)}
+                        </span>
+                      </div>
+                    )}
 
                     {m.comment && (
                       <p className="mt-2 text-sm text-slate-600 italic border-t border-slate-100 pt-2">
