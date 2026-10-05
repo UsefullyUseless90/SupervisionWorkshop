@@ -45,7 +45,7 @@ export function LoginPage() {
                 value={matricule}
                 onChange={(e) => setMatricule(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="AC_TICP_001"
+                placeholder="Utilisateur"
                 autoComplete="username"
               />
             </div>
@@ -60,7 +60,7 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="••••••••"
+                placeholder="Mot de passe"
                 autoComplete="current-password"
               />
             </div>
