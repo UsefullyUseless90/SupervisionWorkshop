@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, type Movement, type AppSettings } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 import {
   Package,
   Activity,
@@ -25,6 +26,7 @@ interface DashboardProps {
 }
 
 export function DashboardPage({ onNavigate }: DashboardProps) {
+  const { profile } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -169,13 +171,15 @@ export function DashboardPage({ onNavigate }: DashboardProps) {
           value={data.anomaliesToday}
           color="bg-amber-50 text-amber-600"
         />
-        <StatCard
-          icon={<TrendingDown size={22} />}
-          label="OF inactifs"
-          value={data.inactiveOFs.length}
-          color="bg-red-50 text-red-600"
-          subtitle={`> ${settings?.inactivity_threshold_days || 3} jours sans mouvement`}
-        />
+        {profile?.role !== 'production' && (
+          <StatCard
+            icon={<TrendingDown size={22} />}
+            label="OF inactifs"
+            value={data.inactiveOFs.length}
+            color="bg-red-50 text-red-600"
+            subtitle={`> ${settings?.inactivity_threshold_days || 3} jours sans mouvement`}
+          />
+        )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -243,12 +247,14 @@ export function DashboardPage({ onNavigate }: DashboardProps) {
                     </p>
                   </div>
                   <div className="text-right ml-2 shrink-0">
-                    <p className="text-xs text-slate-400">
-                      {new Date(m.created_at).toLocaleTimeString('fr-FR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
+                    {profile?.role !== 'production' && (
+                      <p className="text-xs text-slate-400">
+                        {new Date(m.created_at).toLocaleTimeString('fr-FR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    )}
                     {m.status === 'anomaly' && (
                       <span className="inline-block text-xs text-amber-600 font-medium">
                         anomalie
@@ -262,8 +268,8 @@ export function DashboardPage({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      {/* Inactive OFs */}
-      {data.inactiveOFs.length > 0 && (
+      {/* Inactive OFs — hidden for production role (no elapsed time visibility) */}
+      {data.inactiveOFs.length > 0 && profile?.role !== 'production' && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
             <TrendingDown size={20} className="text-amber-500" />

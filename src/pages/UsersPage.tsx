@@ -12,23 +12,29 @@ import {
 } from 'lucide-react';
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  operator: 'Opérateur',
-  supervisor: 'Superviseur',
+  production: 'Production',
+  quality: 'Qualité',
+  dpx: 'DPX',
+  activity_manager: "Responsable d'activité",
   admin: 'Administrateur',
 };
 
-const ROLE_ORDER: UserRole[] = ['admin', 'supervisor', 'operator'];
+const ROLE_ORDER: UserRole[] = ['admin', 'activity_manager', 'dpx', 'quality', 'production'];
 
 const ROLE_ICONS: Record<UserRole, typeof Shield> = {
   admin: Shield,
-  supervisor: Shield,
-  operator: UserIcon,
+  activity_manager: Shield,
+  dpx: Shield,
+  quality: Shield,
+  production: UserIcon,
 };
 
 const ROLE_COLORS: Record<UserRole, string> = {
   admin: 'bg-red-100 text-red-700',
-  supervisor: 'bg-blue-100 text-blue-700',
-  operator: 'bg-slate-100 text-slate-600',
+  activity_manager: 'bg-blue-100 text-blue-700',
+  dpx: 'bg-cyan-100 text-cyan-700',
+  quality: 'bg-teal-100 text-teal-700',
+  production: 'bg-slate-100 text-slate-600',
 };
 
 export function UsersPage() {
@@ -43,7 +49,7 @@ export function UsersPage() {
     matricule: '',
     password: '',
     fullName: '',
-    role: 'operator' as UserRole,
+    role: 'production' as UserRole,
   });
 
   const load = useCallback(async () => {
@@ -90,7 +96,7 @@ export function UsersPage() {
         return;
       }
 
-      setCreateForm({ matricule: '', password: '', fullName: '', role: 'operator' });
+      setCreateForm({ matricule: '', password: '', fullName: '', role: 'production' });
       setShowAdd(false);
       load();
     } catch {
@@ -195,8 +201,10 @@ export function UsersPage() {
                 onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as UserRole })}
                 className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
               >
-                <option value="operator">Opérateur</option>
-                <option value="supervisor">Superviseur</option>
+                <option value="production">Production</option>
+                <option value="quality">Qualité</option>
+                <option value="dpx">DPX</option>
+                <option value="activity_manager">Responsable d'activité</option>
                 <option value="admin">Administrateur</option>
               </select>
             </div>

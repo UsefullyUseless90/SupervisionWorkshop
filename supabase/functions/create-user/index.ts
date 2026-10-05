@@ -73,8 +73,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const validRoles = ["operator", "supervisor", "admin"];
-    const userRole = validRoles.includes(role) ? role : "operator";
+    const validRoles = ["production", "quality", "dpx", "activity_manager", "admin"];
+    const userRole = validRoles.includes(role) ? role : "production";
 
     const email = `${matricule}@workshop.local`;
 

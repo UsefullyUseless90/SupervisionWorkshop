@@ -36,7 +36,7 @@ export function LocationsPage() {
     load();
   }, [load]);
 
-  const canEdit = profile?.role === 'supervisor' || profile?.role === 'admin';
+  const canEdit = profile?.role === 'dpx' || profile?.role === 'activity_manager' || profile?.role === 'admin';
 
   async function handleAdd() {
     if (!form.code.trim() || !form.name.trim()) return;

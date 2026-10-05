@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, type Movement } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import {
   History,
@@ -18,6 +19,7 @@ interface HistoryPageProps {
 }
 
 export function HistoryPage({ ofReference, onClearReference }: HistoryPageProps) {
+  const { profile } = useAuth();
   const [query, setQuery] = useState(ofReference || '');
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -143,10 +145,12 @@ export function HistoryPage({ ofReference, onClearReference }: HistoryPageProps)
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Clock size={14} />
-                        {new Date(m.created_at).toLocaleString('fr-FR')}
-                      </span>
+                      {profile?.role !== 'production' && (
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} />
+                          {new Date(m.created_at).toLocaleString('fr-FR')}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <User size={14} />
                         {m.user_name}

@@ -15,7 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export type UserRole = 'operator' | 'supervisor' | 'admin';
+export type UserRole = 'production' | 'quality' | 'dpx' | 'activity_manager' | 'admin';
 
 export interface Profile {
   id: string;
@@ -71,4 +71,17 @@ export interface ReportRecipient {
   email: string;
   created_at: string;
   created_by: string | null;
+}
+
+export interface QualityCheck {
+  id: string;
+  of_reference: string;
+  location_id: string | null;
+  location_name: string | null;
+  user_id: string;
+  user_name: string | null;
+  result: 'passed' | 'failed';
+  defect_description: string | null;
+  comment: string | null;
+  created_at: string;
 }

@@ -4,6 +4,7 @@ import { Layout, type PageKey } from '@/components/Layout';
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { ScanPage } from '@/pages/ScanPage';
+import { QualityCheckPage } from '@/pages/QualityCheckPage';
 import { TrackPage } from '@/pages/TrackPage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { LocationsPage } from '@/pages/LocationsPage';
@@ -52,6 +53,7 @@ function AppContent() {
     <Layout currentPage={page} onNavigate={handleNavigate}>
       {page === 'dashboard' && <DashboardPage onNavigate={handleNavigate} />}
       {page === 'scan' && <ScanPage initialQuery={trackQuery} />}
+      {page === 'quality' && <QualityCheckPage />}
       {page === 'track' && (
         <TrackPage
           onShowHistory={handleShowHistory}

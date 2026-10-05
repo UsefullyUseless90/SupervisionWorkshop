@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase, type Movement } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import {
   Search,
@@ -19,6 +20,7 @@ interface TrackPageProps {
 }
 
 export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
+  const { profile } = useAuth();
   const [query, setQuery] = useState(initialQuery || '');
   const [result, setResult] = useState<{
     reference: string;
@@ -137,8 +139,9 @@ export function TrackPage({ onShowHistory, initialQuery }: TrackPageProps) {
                   Dernier déplacement
                 </div>
                 <p className="font-semibold text-slate-900">
-                  {result.lastMove
+                  {result.lastMove && profile?.role !== 'production'
                     ? new Date(result.lastMove.created_at).toLocaleString('fr-FR')
+                    : profile?.role === 'production' ? '—'
                     : '—'}
                 </p>
               </div>

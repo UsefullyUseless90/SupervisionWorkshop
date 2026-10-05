@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/lib/supabase';
@@ -21,6 +22,7 @@ export type PageKey =
   | 'scan'
   | 'track'
   | 'history'
+  | 'quality'
   | 'locations'
   | 'users'
   | 'settings'
@@ -33,20 +35,26 @@ interface NavItem {
   roles: UserRole[];
 }
 
+const ALL_ROLES: UserRole[] = ['production', 'quality', 'dpx', 'activity_manager', 'admin'];
+const MANAGER_ROLES: UserRole[] = ['dpx', 'activity_manager', 'admin'];
+
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['operator', 'supervisor', 'admin'] },
-  { key: 'scan', label: 'Scanner un OF', icon: ScanLine, roles: ['operator', 'supervisor', 'admin'] },
-  { key: 'track', label: 'Rechercher un OF', icon: Search, roles: ['operator', 'supervisor', 'admin'] },
-  { key: 'history', label: 'Historique', icon: FileText, roles: ['operator', 'supervisor', 'admin'] },
-  { key: 'locations', label: 'Emplacements', icon: MapPin, roles: ['supervisor', 'admin'] },
+  { key: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ALL_ROLES },
+  { key: 'scan', label: 'Scanner un OF', icon: ScanLine, roles: ALL_ROLES },
+  { key: 'quality', label: 'Contrôle qualité', icon: ShieldCheck, roles: ['quality', 'dpx', 'activity_manager', 'admin'] },
+  { key: 'track', label: 'Rechercher un OF', icon: Search, roles: ALL_ROLES },
+  { key: 'history', label: 'Historique', icon: FileText, roles: ALL_ROLES },
+  { key: 'locations', label: 'Emplacements', icon: MapPin, roles: MANAGER_ROLES },
   { key: 'users', label: 'Utilisateurs', icon: Users, roles: ['admin'] },
-  { key: 'reports', label: 'Rapports', icon: FileText, roles: ['supervisor', 'admin'] },
+  { key: 'reports', label: 'Rapports', icon: FileText, roles: MANAGER_ROLES },
   { key: 'settings', label: 'Paramètres', icon: Settings, roles: ['admin'] },
 ];
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  operator: 'Opérateur',
-  supervisor: 'Superviseur',
+  production: 'Production',
+  quality: 'Qualité',
+  dpx: 'DPX',
+  activity_manager: "Responsable d'activité",
   admin: 'Administrateur',
 };
 
