@@ -76,8 +76,10 @@ Deno.serve(async (req: Request) => {
     const validRoles = ["production", "quality", "dpx", "activity_manager", "admin"];
     const userRole = validRoles.includes(role) ? role : "production";
 
+    // Email is auto-generated from matricule — no email needed from admin
     const email = `${matricule}@workshop.local`;
 
+    // Check for existing matricule
     const { data: existing } = await adminClient
       .from("profiles")
       .select("id")
@@ -91,6 +93,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Create auth user — email_confirm: true so no email verification needed
     const { data: authData, error: createErr } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -106,13 +109,37 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    await adminClient
+    const userId = authData.user.id;
+
+    // The trigger should have created a profile row. Update it with matricule
+    // and correct role. If the trigger failed for any reason, insert manually.
+    const { error: updateErr } = await adminClient
       .from("profiles")
-      .update({ matricule, full_name: fullName, role: userRole })
-      .eq("id", authData.user.id);
+      .update({ matricule, full_name: fullName, role: userRole, email })
+      .eq("id", userId);
+
+    if (updateErr) {
+      // Trigger may have failed — try inserting the profile manually
+      const { error: insertErr } = await adminClient
+        .from("profiles")
+        .insert({
+          id: userId,
+          email,
+          matricule,
+          full_name: fullName,
+          role: userRole,
+        });
+
+      if (insertErr) {
+        return new Response(
+          JSON.stringify({ error: `Utilisateur créé mais profil non configuré: ${insertErr.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     return new Response(
-      JSON.stringify({ success: true, userId: authData.user.id }),
+      JSON.stringify({ success: true, userId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
