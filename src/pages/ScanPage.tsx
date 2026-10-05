@@ -120,7 +120,7 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
           new_location_id: scannedLocation.id,
           new_location_name: scannedLocation.name,
           user_id: profile.id,
-          user_name: profile.full_name || profile.email,
+          user_name: profile.full_name || profile.matricule || 'Utilisateur',
           scan_method: scanMethod,
           comment: comment || null,
           status: 'valid',
@@ -344,7 +344,7 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
             <div className="p-3 rounded-lg bg-slate-50">
               <p className="text-xs text-slate-500 mb-0.5">Utilisateur</p>
               <p className="font-medium text-slate-700">
-                {profile.full_name || profile.email}
+                {profile.full_name || profile.matricule || 'Utilisateur'}
               </p>
             </div>
 

@@ -6,19 +6,13 @@ import {
   type ReactNode,
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase, type Profile, type UserRole } from '@/lib/supabase';
+import { supabase, type Profile } from '@/lib/supabase';
 
 interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (
-    email: string,
-    password: string,
-    fullName: string,
-    role: UserRole
-  ) => Promise<{ error: string | null }>;
+  signIn: (matricule: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -81,30 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function signIn(email: string, password: string) {
+  async function signIn(matricule: string, password: string) {
+    const email = `${matricule.trim()}@workshop.local`;
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    if (error) return { error: error.message };
-    return { error: null };
-  }
-
-  async function signUp(
-    email: string,
-    password: string,
-    fullName: string,
-    role: UserRole
-  ) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, role },
-      },
-    });
-    if (error) return { error: error.message };
-    if (!data.user) return { error: "Échec de la création du compte." };
+    if (error) return { error: 'Matricule ou mot de passe incorrect' };
     return { error: null };
   }
 
@@ -121,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         signIn,
-        signUp,
         signOut,
         refreshProfile,
       }}

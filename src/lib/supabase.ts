@@ -20,6 +20,7 @@ export type UserRole = 'operator' | 'supervisor' | 'admin';
 export interface Profile {
   id: string;
   email: string;
+  matricule: string | null;
   full_name: string | null;
   role: UserRole;
   created_at: string;

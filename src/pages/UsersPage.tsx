@@ -6,7 +6,9 @@ import {
   AlertCircle,
   Shield,
   User as UserIcon,
-  Eye,
+  Plus,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -35,6 +37,14 @@ export function UsersPage() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    matricule: '',
+    password: '',
+    fullName: '',
+    role: 'operator' as UserRole,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +59,45 @@ export function UsersPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function handleCreateUser() {
+    if (!createForm.matricule.trim() || !createForm.password.trim() || !createForm.fullName.trim()) return;
+    setCreating(true);
+    setError(null);
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          matricule: createForm.matricule.trim(),
+          password: createForm.password,
+          fullName: createForm.fullName.trim(),
+          role: createForm.role,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || 'Erreur lors de la création');
+        setCreating(false);
+        return;
+      }
+
+      setCreateForm({ matricule: '', password: '', fullName: '', role: 'operator' });
+      setShowAdd(false);
+      load();
+    } catch {
+      setError('Erreur réseau lors de la création');
+    }
+    setCreating(false);
+  }
 
   async function handleRoleChange(id: string, newRole: UserRole) {
     setUpdatingId(id);
@@ -69,22 +118,105 @@ export function UsersPage() {
   const filtered = users.filter(
     (u) =>
       (u.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
+      (u.matricule || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Utilisateurs</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Gestion des comptes et des rôles
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Utilisateurs</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Gestion des agents et de leurs rôles
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm"
+        >
+          <Plus size={18} />
+          Nouvel agent
+        </button>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm mb-4">
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm mb-4">
           <AlertCircle size={18} className="shrink-0 mt-0.5" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {showAdd && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-4">
+          <h2 className="font-semibold text-slate-900 mb-4">Créer un nouvel agent</h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Matricule
+              </label>
+              <input
+                type="text"
+                value={createForm.matricule}
+                onChange={(e) => setCreateForm({ ...createForm, matricule: e.target.value })}
+                placeholder="Ex: AC_TICP_002"
+                className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Nom complet
+              </label>
+              <input
+                type="text"
+                value={createForm.fullName}
+                onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
+                placeholder="Ex: Jean Dupont"
+                className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Mot de passe
+              </label>
+              <input
+                type="text"
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                placeholder="Mot de passe de l'agent"
+                className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Rôle
+              </label>
+              <select
+                value={createForm.role}
+                onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as UserRole })}
+                className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+              >
+                <option value="operator">Opérateur</option>
+                <option value="supervisor">Superviseur</option>
+                <option value="admin">Administrateur</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => setShowAdd(false)}
+              className="flex-1 py-2.5 border-2 border-slate-200 rounded-xl font-medium text-slate-600 hover:bg-slate-50 transition-colors text-sm"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleCreateUser}
+              disabled={creating}
+              className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {creating && <Loader2 size={16} className="animate-spin" />}
+              Créer l'agent
+            </button>
+          </div>
         </div>
       )}
 
@@ -97,7 +229,7 @@ export function UsersPage() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher par nom ou email..."
+          placeholder="Rechercher par nom ou matricule..."
           className="w-full pl-11 pr-4 py-2.5 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
         />
       </div>
@@ -122,14 +254,16 @@ export function UsersPage() {
                   className="flex items-center gap-3 py-3 px-4 hover:bg-slate-50 transition-colors"
                 >
                   <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-medium text-sm shrink-0">
-                    {(u.full_name || u.email).charAt(0).toUpperCase()}
+                    {(u.full_name || u.matricule || '?').charAt(0).toUpperCase()}
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-slate-900 truncate">
-                      {u.full_name || u.email}
+                      {u.full_name || u.matricule}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {u.matricule || '—'}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
@@ -159,20 +293,6 @@ export function UsersPage() {
             })}
           </div>
         )}
-      </div>
-
-      <div className="mt-4 bg-blue-50 rounded-xl border border-blue-200 p-4">
-        <div className="flex items-start gap-2 text-sm text-blue-800">
-          <Eye size={18} className="shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium mb-1">Nouveaux comptes</p>
-            <p>
-              Les utilisateurs se créent un compte via l'écran de connexion.
-              Le rôle est choisi à l'inscription. L'administrateur peut ensuite
-              ajuster les rôles ci-dessus.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

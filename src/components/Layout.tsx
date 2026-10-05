@@ -109,7 +109,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         <div className="px-3 py-4 border-t border-slate-700/50">
           <div className="px-3 py-2 mb-2">
             <p className="text-sm font-medium text-white truncate">
-              {profile.full_name || profile.email}
+              {profile.full_name || profile.matricule || 'Utilisateur'}
             </p>
             <p className="text-xs text-slate-400">
               {ROLE_LABELS[profile.role]}
@@ -165,7 +165,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="pt-2 mt-2 border-t border-slate-700/50">
               <div className="px-3 py-2">
                 <p className="text-sm font-medium text-white truncate">
-                  {profile.full_name || profile.email}
+                  {profile.full_name || profile.matricule || 'Utilisateur'}
                 </p>
                 <p className="text-xs text-slate-400">
                   {ROLE_LABELS[profile.role]}
