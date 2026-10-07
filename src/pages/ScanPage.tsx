@@ -16,6 +16,8 @@ import {
   StopCircle,
   Clock,
   Timer,
+  Pencil,
+  X,
 } from 'lucide-react';
 
 type Step = 'scan_of' | 'confirm_of' | 'scan_location' | 'confirm' | 'done';
@@ -58,6 +60,8 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
   const [savedMovement, setSavedMovement] = useState<Movement | null>(null);
   const [savedScanType, setSavedScanType] = useState<'start' | 'end'>('start');
   const [savedDuration, setSavedDuration] = useState<number | null>(null);
+  const [editingOF, setEditingOF] = useState(false);
+  const [editValue, setEditValue] = useState('');
 
   const reset = useCallback(() => {
     setStep('scan_of');
@@ -71,41 +75,54 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
     setSavedMovement(null);
   }, []);
 
+  const lookupOF = useCallback(async (value: string) => {
+    const { data: lastMove } = await supabase
+      .from('movements')
+      .select('*')
+      .eq('of_reference', value)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const lastMovement = lastMove as Movement | null;
+
+    if (lastMovement) {
+      setPreviousLocation(lastMovement.new_location_name);
+      setPreviousLocationId(lastMovement.new_location_id);
+
+      if (lastMovement.scan_type === 'start') {
+        setActiveStartScan(lastMovement);
+      } else {
+        setActiveStartScan(null);
+      }
+    } else {
+      setPreviousLocation(null);
+      setPreviousLocationId(null);
+      setActiveStartScan(null);
+    }
+  }, []);
+
   const handleOFDetected = useCallback(
     async (value: string) => {
       if (step !== 'scan_of') return;
       setError(null);
 
-      const { data: lastMove } = await supabase
-        .from('movements')
-        .select('*')
-        .eq('of_reference', value)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const lastMovement = lastMove as Movement | null;
-
-      if (lastMovement) {
-        setPreviousLocation(lastMovement.new_location_name);
-        setPreviousLocationId(lastMovement.new_location_id);
-
-        if (lastMovement.scan_type === 'start') {
-          setActiveStartScan(lastMovement);
-        } else {
-          setActiveStartScan(null);
-        }
-      } else {
-        setPreviousLocation(null);
-        setPreviousLocationId(null);
-        setActiveStartScan(null);
-      }
+      await lookupOF(value);
 
       setOfReference(value);
       setStep('confirm_of');
     },
-    [step]
+    [step, lookupOF]
   );
+
+  async function handleOFCorrection() {
+    const corrected = editValue.trim();
+    if (!corrected) return;
+    setError(null);
+    setEditingOF(false);
+    await lookupOF(corrected);
+    setOfReference(corrected);
+  }
 
   const handleLocationDetected = useCallback(
     async (value: string) => {
@@ -306,10 +323,53 @@ export function ScanPage({ initialQuery }: ScanPageProps) {
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-200">
-            <p className="text-xs text-slate-500 mb-1">Référence lue</p>
-            <p className="text-xl font-bold text-slate-900 break-all">
-              {ofReference}
-            </p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-slate-500">Référence lue</p>
+              {!editingOF ? (
+                <button
+                  onClick={() => {
+                    setEditValue(ofReference);
+                    setEditingOF(true);
+                  }}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                >
+                  <Pencil size={14} />
+                  Corriger
+                </button>
+              ) : (
+                <button
+                  onClick={() => setEditingOF(false)}
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 font-medium transition-colors"
+                >
+                  <X size={14} />
+                  Annuler
+                </button>
+              )}
+            </div>
+            {editingOF ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editValue}
+                  autoFocus
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleOFCorrection();
+                  }}
+                  className="flex-1 px-3 py-2 border-2 border-blue-400 rounded-xl text-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                <button
+                  onClick={handleOFCorrection}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
+                >
+                  <Check size={20} />
+                </button>
+              </div>
+            ) : (
+              <p className="text-xl font-bold text-slate-900 break-all">
+                {ofReference}
+              </p>
+            )}
           </div>
 
           {previousLocation && (
