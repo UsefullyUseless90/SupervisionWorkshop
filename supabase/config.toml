@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.reset-password]
 verify_jwt = false
+
+[functions.delete-user]
+verify_jwt = true

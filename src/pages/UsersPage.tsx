@@ -9,6 +9,7 @@ import {
   Plus,
   Loader2,
   Trash2,
+  X,
 } from 'lucide-react';
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -51,6 +52,8 @@ export function UsersPage() {
     fullName: '',
     role: 'production' as UserRole,
   });
+  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,6 +106,39 @@ export function UsersPage() {
       setError('Erreur réseau lors de la création');
     }
     setCreating(false);
+  }
+
+  async function handleDeleteUser() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+        body: JSON.stringify({ userId: deleteTarget.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || 'Erreur lors de la suppression');
+        setDeleting(false);
+        return;
+      }
+
+      setDeleteTarget(null);
+      load();
+    } catch {
+      setError('Erreur réseau lors de la suppression');
+    }
+    setDeleting(false);
   }
 
   async function handleRoleChange(id: string, newRole: UserRole) {
@@ -295,6 +331,13 @@ export function UsersPage() {
                         </option>
                       ))}
                     </select>
+                    <button
+                      onClick={() => setDeleteTarget(u)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                      title="Supprimer cet agent"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
               );
@@ -302,6 +345,72 @@ export function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 size={20} className="text-red-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">Supprimer l'agent</h3>
+                  <p className="text-xs text-slate-500">Cette action est irréversible</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-5">
+              Voulez-vous vraiment supprimer le compte de{' '}
+              <span className="font-medium text-slate-900">
+                {deleteTarget.full_name || deleteTarget.matricule}
+              </span>{' '}
+              ({deleteTarget.matricule}) ? Son compte et toutes ses données
+              associées seront définitivement supprimés.
+            </p>
+
+            {error && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm mb-4">
+                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setError(null);
+                }}
+                disabled={deleting}
+                className="flex-1 py-2.5 border-2 border-slate-200 rounded-xl font-medium text-slate-600 hover:bg-slate-50 transition-colors text-sm disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
