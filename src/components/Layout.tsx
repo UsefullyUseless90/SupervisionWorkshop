@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ShieldCheck,
+  UserCircle,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/lib/supabase';
@@ -26,7 +27,8 @@ export type PageKey =
   | 'locations'
   | 'users'
   | 'settings'
-  | 'reports';
+  | 'reports'
+  | 'account';
 
 interface NavItem {
   key: PageKey;
@@ -48,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'users', label: 'Utilisateurs', icon: Users, roles: ['admin'] },
   { key: 'reports', label: 'Rapports', icon: FileText, roles: MANAGER_ROLES },
   { key: 'settings', label: 'Paramètres', icon: Settings, roles: ['admin'] },
+  { key: 'account', label: 'Mon compte', icon: UserCircle, roles: ALL_ROLES },
 ];
 
 const ROLE_LABELS: Record<UserRole, string> = {

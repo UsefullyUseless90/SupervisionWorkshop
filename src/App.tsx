@@ -11,6 +11,7 @@ import { LocationsPage } from '@/pages/LocationsPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { AccountPage } from '@/pages/AccountPage';
 import { Loader2 } from 'lucide-react';
 
 function AppContent() {
@@ -70,6 +71,7 @@ function AppContent() {
       {page === 'users' && <UsersPage />}
       {page === 'settings' && <SettingsPage />}
       {page === 'reports' && <ReportsPage />}
+      {page === 'account' && <AccountPage />}
     </Layout>
   );
 }
