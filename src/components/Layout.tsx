@@ -91,7 +91,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <Package size={22} className="text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-base">OF Tracker</h1>
+            <h1 className="font-bold text-base">Suivi OF</h1>
             <p className="text-xs text-slate-400">Traçabilité atelier</p>
           </div>
         </div>
@@ -143,7 +143,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <Package size={18} className="text-white" />
             </div>
-            <span className="font-bold text-sm">OF Tracker</span>
+            <span className="font-bold text-sm">Suivi OF</span>
           </div>
           <button
             onClick={() => setMobileNavOpen(!mobileNavOpen)}

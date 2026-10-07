@@ -178,7 +178,7 @@ export function LoginPage() {
           <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-600/30">
             <Package size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">OF Tracker</h1>
+          <h1 className="text-2xl font-bold text-white">Suivi OF</h1>
           <p className="text-slate-400 text-sm mt-1">
             Suivi physique des Ordres de Fabrication
           </p>
